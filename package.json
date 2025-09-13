@@ -1,5 +1,4 @@
 {
-  "name": "@tigo-sport/logger",
   "version": "1.0.0",
   "description": "Librería de logging para microservicios Node.js con soporte para múltiples niveles, formatos JSON y middleware Express",
   "main": "dist/index.js",
