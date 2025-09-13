@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { logger } from './logger';
-import { RequestLogData } from './types';
+import { RequestLogData, HttpStatusCode } from './types';
 
 export function requestLogger(req: Request, res: Response, next: NextFunction): void {
   const startTime = Date.now();
@@ -28,9 +28,23 @@ export function requestLogger(req: Request, res: Response, next: NextFunction): 
 
     // Log de la respuesta
     if (res.statusCode >= 400) {
-      logger.warn('Request completed with error', responseData);
+      logger.logRequest(
+        'Request completed with error', 
+        req.method, 
+        req.url, 
+        res.statusCode, 
+        duration,
+        { userAgent: requestData.userAgent, ip: requestData.ip }
+      );
     } else {
-      logger.info('Request completed successfully', responseData);
+      logger.logRequest(
+        'Request completed successfully', 
+        req.method, 
+        req.url, 
+        res.statusCode, 
+        duration,
+        { userAgent: requestData.userAgent, ip: requestData.ip }
+      );
     }
 
     return originalSend.call(this, body);
@@ -88,9 +102,23 @@ export function createRequestLogger(options: {
       }
 
       if (res.statusCode >= 400) {
-        logger.warn('Request completed with error', responseData);
+        logger.logRequest(
+          'Request completed with error', 
+          req.method, 
+          req.url, 
+          res.statusCode, 
+          duration,
+          responseData
+        );
       } else {
-        logger.info('Request completed successfully', responseData);
+        logger.logRequest(
+          'Request completed successfully', 
+          req.method, 
+          req.url, 
+          res.statusCode, 
+          duration,
+          responseData
+        );
       }
 
       return originalSend.call(this, body);

@@ -76,6 +76,83 @@ try {
 }
 ```
 
+## Logging con códigos de error HTTP y de aplicación
+
+### Códigos de estado HTTP
+
+```javascript
+const { logger, HttpStatusCode } = require('@tigo-sport/logger');
+
+// Logging con códigos HTTP específicos
+logger.logHttpError('Usuario no encontrado', HttpStatusCode.NOT_FOUND, {
+  userId: 123,
+  endpoint: '/api/users/123'
+});
+
+logger.logHttpError('Error interno del servidor', HttpStatusCode.INTERNAL_SERVER_ERROR, {
+  component: 'database',
+  operation: 'getUserById'
+});
+
+// Logging de requests con códigos de estado
+logger.logRequest('API Request', 'GET', '/api/users', 200, 150, {
+  userId: 123,
+  userAgent: 'Mozilla/5.0...'
+});
+```
+
+### Códigos de error de aplicación
+
+```javascript
+const { logger, ApplicationErrorCode } = require('@tigo-sport/logger');
+
+// Errores de autenticación
+logger.logApplicationError('Token expirado', ApplicationErrorCode.AUTH_TOKEN_EXPIRED, {
+  userId: 123,
+  requestId: 'req-456',
+  component: 'auth-service'
+});
+
+// Errores de base de datos
+logger.logApplicationError('Error de conexión a BD', ApplicationErrorCode.DB_CONNECTION_ERROR, {
+  component: 'user-service',
+  operation: 'createUser',
+  correlationId: 'corr-789'
+});
+
+// Errores de servicios externos
+logger.logApplicationError('Servicio de pagos no disponible', ApplicationErrorCode.EXT_SERVICE_UNAVAILABLE, {
+  service: 'payment-gateway',
+  endpoint: 'https://api.payments.com/charge',
+  timeout: 5000
+});
+
+// Errores de negocio
+logger.logApplicationError('Saldo insuficiente', ApplicationErrorCode.BIZ_INSUFFICIENT_BALANCE, {
+  userId: 123,
+  requestedAmount: 1000,
+  availableBalance: 500,
+  operation: 'transfer'
+});
+```
+
+### Códigos disponibles
+
+#### HTTP Status Codes
+- **2xx**: `OK`, `CREATED`, `ACCEPTED`, `NO_CONTENT`
+- **3xx**: `MOVED_PERMANENTLY`, `FOUND`, `NOT_MODIFIED`
+- **4xx**: `BAD_REQUEST`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `METHOD_NOT_ALLOWED`, `CONFLICT`, `UNPROCESSABLE_ENTITY`, `TOO_MANY_REQUESTS`
+- **5xx**: `INTERNAL_SERVER_ERROR`, `NOT_IMPLEMENTED`, `BAD_GATEWAY`, `SERVICE_UNAVAILABLE`, `GATEWAY_TIMEOUT`
+
+#### Application Error Codes
+- **AUTH_xxx**: Errores de autenticación y autorización
+- **DB_xxx**: Errores de base de datos
+- **EXT_xxx**: Errores de servicios externos
+- **BIZ_xxx**: Errores de lógica de negocio
+- **SYS_xxx**: Errores de sistema
+- **VAL_xxx**: Errores de validación
+- **GEN_xxx**: Errores genéricos
+
 ## Middleware para Express
 
 ### Uso básico
@@ -140,6 +217,8 @@ Error: DB Down
 {"timestamp":"2024-01-15 10:30:46","service":"mi-microservicio","level":"info","message":"Incoming request","method":"GET","url":"/api/users","userAgent":"Mozilla/5.0...","ip":"127.0.0.1"}
 {"timestamp":"2024-01-15 10:30:47","service":"mi-microservicio","level":"warn","message":"Advertencia de memoria"}
 {"timestamp":"2024-01-15 10:30:48","service":"mi-microservicio","level":"error","message":"Error en base de datos","stack":"Error: DB Down\n    at Object.<anonymous> (/app/index.js:10:23)"}
+{"timestamp":"2024-01-15 10:30:49","service":"mi-microservicio","level":"warn","message":"Usuario no encontrado","httpStatus":404,"statusCode":404,"userId":123,"endpoint":"/api/users/123"}
+{"timestamp":"2024-01-15 10:30:50","service":"mi-microservicio","level":"error","message":"Error de conexión a BD","errorCode":"DB_001","component":"user-service","operation":"createUser"}
 ```
 
 ## Configuración avanzada

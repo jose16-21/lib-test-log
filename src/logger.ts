@@ -1,5 +1,5 @@
 import winston from 'winston';
-import { LogLevel, LoggerConfig, LogEntry } from './types';
+import { LogLevel, LoggerConfig, LogEntry, HttpStatusCode, ApplicationErrorCode, ErrorContext } from './types';
 
 export class Logger {
   private winstonLogger: winston.Logger;
@@ -123,6 +123,55 @@ export class Logger {
 
   debug(message: string, meta?: any): void {
     this.winstonLogger.debug(message, meta);
+  }
+
+  // Métodos específicos para códigos de error HTTP
+  logHttpError(message: string, httpStatus: HttpStatusCode, meta?: any): void {
+    const logData = { httpStatus, statusCode: httpStatus, ...meta };
+    
+    if (httpStatus >= 500) {
+      this.error(message, logData);
+    } else if (httpStatus >= 400) {
+      this.warn(message, logData);
+    } else {
+      this.info(message, logData);
+    }
+  }
+
+  // Método específico para errores de aplicación
+  logApplicationError(message: string, errorCode: ApplicationErrorCode, context?: ErrorContext): void {
+    const logData = { 
+      errorCode, 
+      ...context 
+    };
+
+    // Determinar nivel basado en el tipo de error
+    if (errorCode.startsWith('SYS_') || errorCode.startsWith('DB_') || errorCode.startsWith('EXT_')) {
+      this.error(message, logData);
+    } else if (errorCode.startsWith('AUTH_') || errorCode.startsWith('BIZ_')) {
+      this.warn(message, logData);
+    } else {
+      this.info(message, logData);
+    }
+  }
+
+  // Método para logging de requests con códigos de estado
+  logRequest(message: string, method: string, url: string, statusCode: number, duration?: number, meta?: any): void {
+    const logData = {
+      method,
+      url,
+      statusCode,
+      duration,
+      ...meta
+    };
+
+    if (statusCode >= 500) {
+      this.error(message, logData);
+    } else if (statusCode >= 400) {
+      this.warn(message, logData);
+    } else {
+      this.info(message, logData);
+    }
   }
 
   // Método para agregar transports personalizados en el futuro
