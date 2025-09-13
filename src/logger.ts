@@ -138,3 +138,5 @@ class Logger {
 
 // Instancia singleton del logger
 export const logger = new Logger();
+
+export { Logger }
