@@ -1,7 +1,7 @@
 import winston from 'winston';
 import { LogLevel, LoggerConfig, LogEntry } from './types';
 
-class Logger {
+export class Logger {
   private winstonLogger: winston.Logger;
   private config: LoggerConfig;
 
@@ -138,5 +138,3 @@ class Logger {
 
 // Instancia singleton del logger
 export const logger = new Logger();
-
-export { Logger }
