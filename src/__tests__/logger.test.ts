@@ -1,44 +1,42 @@
 import { logger } from '../logger';
 import { HttpStatusCode, ApplicationErrorCode } from '../types';
 
-// Mock console methods
-const consoleSpy = {
-  log: jest.spyOn(console, 'log').mockImplementation(),
-  error: jest.spyOn(console, 'error').mockImplementation(),
-  warn: jest.spyOn(console, 'warn').mockImplementation(),
-  info: jest.spyOn(console, 'info').mockImplementation(),
-};
+// Mock process.stdout.write and process.stderr.write since Winston writes directly to these
+const stdoutSpy = jest.spyOn(process.stdout, 'write').mockImplementation(() => true);
+const stderrSpy = jest.spyOn(process.stderr, 'write').mockImplementation(() => true);
 
 describe('Logger', () => {
   beforeEach(() => {
     // Clear all mocks before each test
-    Object.values(consoleSpy).forEach(spy => spy.mockClear());
+    stdoutSpy.mockClear();
+    stderrSpy.mockClear();
   });
 
   afterAll(() => {
-    // Restore console methods
-    Object.values(consoleSpy).forEach(spy => spy.mockRestore());
+    // Restore process methods
+    stdoutSpy.mockRestore();
+    stderrSpy.mockRestore();
   });
 
   it('should log info messages', () => {
     logger.info('Test info message');
-    expect(consoleSpy.log).toHaveBeenCalled();
+    expect(stdoutSpy).toHaveBeenCalled();
   });
 
   it('should log error messages with stack trace', () => {
     const error = new Error('Test error');
     logger.error('Test error message', error);
-    expect(consoleSpy.log).toHaveBeenCalled();
+    expect(stderrSpy).toHaveBeenCalled();
   });
 
   it('should log warn messages', () => {
     logger.warn('Test warning message');
-    expect(consoleSpy.log).toHaveBeenCalled();
+    expect(stdoutSpy).toHaveBeenCalled();
   });
 
   it('should log debug messages', () => {
     logger.debug('Test debug message');
-    expect(consoleSpy.log).toHaveBeenCalled();
+    expect(stdoutSpy).toHaveBeenCalled();
   });
 
   it('should include service name in logs', () => {
@@ -47,14 +45,13 @@ describe('Logger', () => {
   });
 
   it('should handle metadata objects', () => {
-    const metadata = { userId: 123, action: 'login' };
-    logger.info('User action', metadata);
-    expect(consoleSpy.log).toHaveBeenCalled();
+    logger.info('User action', { userId: 123, action: 'login' });
+    expect(stdoutSpy).toHaveBeenCalled();
   });
 
   it('should log HTTP errors with status codes', () => {
     logger.logHttpError('Bad request error', HttpStatusCode.BAD_REQUEST, { userId: 123 });
-    expect(consoleSpy.log).toHaveBeenCalled();
+    expect(stderrSpy).toHaveBeenCalled();
   });
 
   it('should log application errors with error codes', () => {
@@ -62,11 +59,30 @@ describe('Logger', () => {
       component: 'user-service',
       operation: 'getUserById'
     });
-    expect(consoleSpy.log).toHaveBeenCalled();
+    expect(stderrSpy).toHaveBeenCalled();
   });
 
   it('should log requests with status codes', () => {
     logger.logRequest('API request', 'GET', '/api/users', 200, 150, { userId: 123 });
-    expect(consoleSpy.log).toHaveBeenCalled();
+    expect(stdoutSpy).toHaveBeenCalled();
+  });
+
+  it('should log different levels to appropriate streams', () => {
+    // Clear spies before this test
+    stdoutSpy.mockClear();
+    stderrSpy.mockClear();
+
+    // Test info goes to stdout
+    logger.info('Info message');
+    expect(stdoutSpy).toHaveBeenCalled();
+    expect(stderrSpy).not.toHaveBeenCalled();
+
+    // Clear and test error goes to stderr
+    stdoutSpy.mockClear();
+    stderrSpy.mockClear();
+    
+    logger.error('Error message');
+    expect(stderrSpy).toHaveBeenCalled();
+    expect(stdoutSpy).not.toHaveBeenCalled();
   });
 });
