@@ -72,7 +72,8 @@ export class Logger {
 
     const transports: winston.transport[] = [
       new winston.transports.Console({
-        format: winston.format.combine(...formats)
+        format: winston.format.combine(...formats),
+        stderrLevels: ['error']
       })
     ];
 
