@@ -1,4 +1,4 @@
-# @tigo-sport/logger
+# @smdv/logger
 
 Librería de logging profesional para microservicios Node.js con soporte para múltiples niveles, formatos JSON, colores en desarrollo y middleware para Express.
 
@@ -24,7 +24,7 @@ Librería de logging profesional para microservicios Node.js con soporte para m�
 ## Instalación
 
 ```bash
-npm install @tigo-sport/logger
+npm install @smdv/logger
 ```
 
 ## Configuración
@@ -50,7 +50,7 @@ Si `LOG_LEVEL=warn`, solo se mostrarán logs de nivel `warn` y `error`.
 ## Uso básico
 
 ```javascript
-const { logger } = require('@tigo-sport/logger');
+const { logger } = require('@smdv/logger');
 
 // Logs básicos
 logger.info('Servicio iniciado correctamente');
@@ -81,7 +81,7 @@ try {
 ### Códigos de estado HTTP
 
 ```javascript
-const { logger, HttpStatusCode } = require('@tigo-sport/logger');
+const { logger, HttpStatusCode } = require('@smdv/logger');
 
 // Logging con códigos HTTP específicos
 logger.logHttpError('Usuario no encontrado', HttpStatusCode.NOT_FOUND, {
@@ -104,7 +104,7 @@ logger.logRequest('API Request', 'GET', '/api/users', 200, 150, {
 ### Códigos de error de aplicación
 
 ```javascript
-const { logger, ApplicationErrorCode } = require('@tigo-sport/logger');
+const { logger, ApplicationErrorCode } = require('@smdv/logger');
 
 // Errores de autenticación
 logger.logApplicationError('Token expirado', ApplicationErrorCode.AUTH_TOKEN_EXPIRED, {
@@ -159,7 +159,7 @@ logger.logApplicationError('Saldo insuficiente', ApplicationErrorCode.BIZ_INSUFF
 
 ```javascript
 const express = require('express');
-const { logger, requestLogger } = require('@tigo-sport/logger');
+const { logger, requestLogger } = require('@smdv/logger');
 
 const app = express();
 
@@ -179,7 +179,7 @@ app.listen(3000, () => {
 ### Middleware avanzado con opciones
 
 ```javascript
-const { createRequestLogger } = require('@tigo-sport/logger');
+const { createRequestLogger } = require('@smdv/logger');
 
 // Middleware con configuración personalizada
 app.use(createRequestLogger({
@@ -226,7 +226,7 @@ Error: DB Down
 ### Logger personalizado
 
 ```javascript
-const { createCustomLogger } = require('@tigo-sport/logger');
+const { createCustomLogger } = require('@smdv/logger');
 
 const customLogger = createCustomLogger({
   level: 'debug',
@@ -241,7 +241,7 @@ customLogger.debug('Log con configuración personalizada');
 
 ```javascript
 const winston = require('winston');
-const { logger } = require('@tigo-sport/logger');
+const { logger } = require('@smdv/logger');
 
 // Agregar transport de archivo
 const fileTransport = new winston.transports.File({
@@ -258,7 +258,7 @@ La librería está preparada para agregar transports adicionales:
 
 ```javascript
 // Próximamente disponibles
-const { TransportFactory } = require('@tigo-sport/logger');
+const { TransportFactory } = require('@smdv/logger');
 
 // CloudWatch (futuro)
 // const cloudWatchTransport = TransportFactory.createCloudWatchTransport({
@@ -292,7 +292,7 @@ npm run pack
 ## Estructura del proyecto
 
 ```
-@tigo-sport/logger/
+@smdv/logger/
 ├── src/
 │   ├── index.ts          # Exportaciones principales
 │   ├── logger.ts         # Clase Logger principal

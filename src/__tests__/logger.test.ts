@@ -1,4 +1,4 @@
-import { logger } from '../logger';
+import { logger } from '../logger'; // No requiere cambio, solo si se exporta desde index.ts como @smdv/logger
 import { HttpStatusCode, ApplicationErrorCode } from '../types';
 
 // Mock process.stdout.write and process.stderr.write since Winston writes directly to these
