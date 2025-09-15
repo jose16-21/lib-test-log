@@ -19,3 +19,13 @@ jobs:
           node-version: '18'
       - run: npm install
       - run: npm run test
+      - name: Check PR has only one commit (solo para develop)
+        if: github.base_ref == 'develop'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          COMMITS=$(gh pr view ${{ github.event.pull_request.number }} --json commits --jq '.commits | length')
+          if [ "$COMMITS" -ne 1 ]; then
+            echo "ERROR: El Pull Request a develop debe tener solo un commit. Usa git commit --amend y git push --force."
+            exit 1
+          fi
