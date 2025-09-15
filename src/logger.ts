@@ -1,11 +1,13 @@
 import winston from 'winston';
 import { LogLevel, LoggerConfig, LogEntry, HttpStatusCode, ApplicationErrorCode, ErrorContext } from './types';
+import { XmlProcessor } from './xml';
 
 export class Logger {
   private winstonLogger: winston.Logger;
   private config: LoggerConfig;
+  private xmlProcessor: XmlProcessor;
 
-  constructor(config?: Partial<LoggerConfig>) {
+  constructor(config?: Partial<LoggerConfig>, transports?: winston.transport[]) {
     this.config = {
       level: this.getLogLevel(),
       service: this.getServiceName(),
@@ -13,7 +15,40 @@ export class Logger {
       ...config
     };
 
-    this.winstonLogger = this.createWinstonLogger();
+    this.winstonLogger = this.createWinstonLogger(transports);
+    this.xmlProcessor = new XmlProcessor();
+  }
+
+  /**
+   * Procesa y loguea XML. Si el XML es válido, lo parsea y lo loguea al nivel indicado.
+   * Si es inválido o ocurre un error, lo loguea como error.
+   */
+  logXml(xmlString: string, level: LogLevel = LogLevel.INFO, meta?: any): void {
+    let parsed: any = null;
+    let valid: boolean = false;
+    try {
+      valid = this.xmlProcessor.validate(xmlString);
+      if (valid) {
+        parsed = this.xmlProcessor.parse(xmlString);
+        switch (level) {
+          case LogLevel.ERROR:
+            this.error("XML procesado correctamente", undefined, { xml: parsed, ...meta });
+            break;
+          case LogLevel.WARN:
+            this.warn("XML procesado correctamente", { xml: parsed, ...meta });
+            break;
+          case LogLevel.DEBUG:
+            this.debug("XML procesado correctamente", { xml: parsed, ...meta });
+            break;
+          default:
+            this.info("XML procesado correctamente", { xml: parsed, ...meta });
+        }
+      } else {
+        this.error("XML inválido", undefined, { xml: xmlString, ...meta });
+      }
+    } catch (err) {
+      this.error("Error procesando XML", err, { xml: xmlString, ...meta });
+    }
   }
 
   private getLogLevel(): LogLevel {
@@ -40,7 +75,7 @@ export class Logger {
     return process.env.NODE_ENV !== 'production';
   }
 
-  private createWinstonLogger(): winston.Logger {
+  private createWinstonLogger(customTransports?: winston.transport[]): winston.Logger {
     const formats = [
       winston.format.timestamp({
         format: 'YYYY-MM-DD HH:mm:ss'
@@ -56,26 +91,33 @@ export class Logger {
         winston.format.printf((info) => {
           const { timestamp, level, message, service, stack, ...meta } = info;
           let logMessage = `${timestamp} [${service}] ${level}: ${message}`;
-          
+
           if (Object.keys(meta).length > 0) {
             logMessage += `\n${JSON.stringify(meta, null, 2)}`;
           }
-          
+
           if (stack) {
             logMessage += `\n${stack}`;
           }
-          
+
           return logMessage;
         })
       );
     }
 
-    const transports: winston.transport[] = [
-      new winston.transports.Console({
-        format: winston.format.combine(...formats),
-        stderrLevels: ['error']
-      })
-    ];
+    let transports: winston.transport[] = [];
+    if (customTransports && customTransports.length > 0) {
+      transports = customTransports;
+    } else if (process.env.NODE_ENV === 'test') {
+      transports = [];
+    } else {
+      transports = [
+        new winston.transports.Console({
+          format: winston.format.combine(...formats),
+          stderrLevels: ['error']
+        })
+      ];
+    }
 
     return winston.createLogger({
       level: this.config.level,
@@ -129,7 +171,7 @@ export class Logger {
   // Métodos específicos para códigos de error HTTP
   logHttpError(message: string, httpStatus: HttpStatusCode, meta?: any): void {
     const logData = { httpStatus, statusCode: httpStatus, ...meta };
-    
+
     if (httpStatus >= 500) {
       this.error(message, logData);
     } else if (httpStatus >= 400) {
@@ -141,9 +183,9 @@ export class Logger {
 
   // Método específico para errores de aplicación
   logApplicationError(message: string, errorCode: ApplicationErrorCode, context?: ErrorContext): void {
-    const logData = { 
-      errorCode, 
-      ...context 
+    const logData = {
+      errorCode,
+      ...context
     };
 
     // Determinar nivel basado en el tipo de error

@@ -76,6 +76,25 @@ try {
 }
 ```
 
+
+## Procesamiento y logging de XML
+
+```javascript
+const { logger } = require('@smdv/logger');
+
+const xmlString = `
+<user>
+  <id>123</id>
+  <name>Juan Pérez</name>
+</user>
+`;
+
+// Procesa y loguea el XML
+logger.logXml(xmlString, 'info', { origen: 'servicio-xml' });
+
+// Puedes cambiar el nivel de log: 'error', 'warn', 'debug', 'info'
+```
+
 ## Logging con códigos de error HTTP y de aplicación
 
 ### Códigos de estado HTTP
