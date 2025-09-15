@@ -6,6 +6,7 @@ function stripAnsi(str: string): string {
 import { Logger } from '../logger';
 import { LogLevel } from '../types';
 import { HttpStatusCode, ApplicationErrorCode } from '../types';
+import { SupportedLang } from '../constants';
 
 import Transport from 'winston-transport';
 
@@ -20,7 +21,44 @@ class TestTransport extends Transport {
 }
 
 const testTransport = new TestTransport();
-const logger = new Logger({ level: LogLevel.DEBUG }, [testTransport]);
+const logger = new Logger({ level: LogLevel.DEBUG, lang: SupportedLang.ES }, [testTransport]);
+  it('should translate i18n keys for info', async () => {
+    logger.info('SERVICE_STARTED');
+    await new Promise(resolve => setImmediate(resolve));
+    expect(testTransport.logs.some(log => stripAnsi(log.message) === 'Servicio iniciado correctamente')).toBe(true);
+  });
+
+  it('should translate i18n keys for warn', async () => {
+    logger.warn('MEMORY_WARNING');
+    await new Promise(resolve => setImmediate(resolve));
+    expect(testTransport.logs.some(log => stripAnsi(log.message) === 'Advertencia de memoria')).toBe(true);
+  });
+
+  it('should translate i18n keys for error', async () => {
+    logger.error('DB_ERROR');
+    await new Promise(resolve => setImmediate(resolve));
+    expect(testTransport.logs.some(log => stripAnsi(log.message) === 'Error en base de datos')).toBe(true);
+  });
+
+  it('should translate i18n keys for debug', async () => {
+    logger.debug('CUSTOM_MESSAGE', { param: 'valor' });
+    await new Promise(resolve => setImmediate(resolve));
+    expect(testTransport.logs.some(log => stripAnsi(log.message) === 'Mensaje personalizado: valor')).toBe(true);
+  });
+
+  it('should log free messages without translation', async () => {
+    logger.info('Mensaje libre en español');
+    await new Promise(resolve => setImmediate(resolve));
+    expect(testTransport.logs.some(log => stripAnsi(log.message) === 'Mensaje libre en español')).toBe(true);
+  });
+
+  it('should translate i18n keys for info in English', async () => {
+    const testTransportEn = new TestTransport();
+    const loggerEn = new Logger({ level: LogLevel.INFO, lang: SupportedLang.EN }, [testTransportEn]);
+    loggerEn.info('SERVICE_STARTED');
+    await new Promise(resolve => setImmediate(resolve));
+    expect(testTransportEn.logs.some(log => stripAnsi(log.message) === 'Service started successfully')).toBe(true);
+  });
 
 
 describe('Logger', () => {
@@ -80,16 +118,16 @@ describe('Logger', () => {
 
 
   it('should handle metadata objects', async () => {
-    logger.info('User action', { userId: 123, action: 'login' });
+    logger.info('User action', undefined, { userId: 123, action: 'login' });
     await new Promise(resolve => setImmediate(resolve));
-  expect(testTransport.logs.some(log => stripAnsi(log.level) === 'info' && stripAnsi(log.message) === 'User action' && log.userId === 123 && log.action === 'login')).toBe(true);
+    expect(testTransport.logs.some(log => stripAnsi(log.level) === 'info' && stripAnsi(log.message) === 'User action' && log.userId === 123 && log.action === 'login')).toBe(true);
   });
 
 
   it('should log HTTP errors with status codes', async () => {
     logger.logHttpError('Bad request error', HttpStatusCode.BAD_REQUEST, { userId: 123 });
     await new Promise(resolve => setImmediate(resolve));
-  expect(testTransport.logs.some(log => stripAnsi(log.level) === 'warn' && stripAnsi(log.message) === 'Bad request error' && log.httpStatus === HttpStatusCode.BAD_REQUEST)).toBe(true);
+    expect(testTransport.logs.some(log => stripAnsi(log.level) === 'warn' && stripAnsi(log.message) === 'Bad request error' && log.httpStatus === HttpStatusCode.BAD_REQUEST)).toBe(true);
   });
 
 
@@ -99,14 +137,14 @@ describe('Logger', () => {
       operation: 'getUserById'
     });
     await new Promise(resolve => setImmediate(resolve));
-  expect(testTransport.logs.some(log => stripAnsi(log.level) === 'error' && stripAnsi(log.message) === 'Database connection failed' && log.errorCode === ApplicationErrorCode.DB_CONNECTION_ERROR)).toBe(true);
+    expect(testTransport.logs.some(log => stripAnsi(log.level) === 'error' && stripAnsi(log.message) === 'Database connection failed' && log.errorCode === ApplicationErrorCode.DB_CONNECTION_ERROR)).toBe(true);
   });
 
 
   it('should log requests with status codes', async () => {
     logger.logRequest('API request', 'GET', '/api/users', 200, 150, { userId: 123 });
     await new Promise(resolve => setImmediate(resolve));
-  expect(testTransport.logs.some(log => stripAnsi(log.level) === 'info' && stripAnsi(log.message) === 'API request' && log.method === 'GET' && log.url === '/api/users')).toBe(true);
+    expect(testTransport.logs.some(log => stripAnsi(log.level) === 'info' && stripAnsi(log.message) === 'API request' && log.method === 'GET' && log.url === '/api/users')).toBe(true);
   });
 
 

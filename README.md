@@ -27,53 +27,69 @@ Librería de logging profesional para microservicios Node.js con soporte para m�
 npm install @smdv/logger
 ```
 
+
 ## Configuración
+
 
 ### Variables de entorno
 
 ```bash
 # .env
-LOG_LEVEL=info
+LOG_LEVEL=info           # (opcional) Forzar nivel de log
 SERVICE_NAME=mi-microservicio
-NODE_ENV=production
+NODE_ENV=production      # Entorno: local, develop, testing, production
+LOG_LANG=en              # Idioma de los mensajes: 'en' para inglés, 'es' para español. Si no se define, será inglés por defecto.
 ```
 
-### Jerarquía de niveles
+El logger tomará automáticamente el idioma configurado en LOG_LANG para todos los mensajes traducidos. No necesitas cambiar el código para cambiar el idioma, solo actualiza la variable de entorno.
 
-Si `LOG_LEVEL=warn`, solo se mostrarán logs de nivel `warn` y `error`.
+### Niveles automáticos según entorno
 
-- `error` (nivel más alto)
-- `warn`
-- `info`
-- `debug` (nivel más bajo)
+El nivel mínimo de log se configura automáticamente según el entorno:
+
+| Entorno      | Nivel mínimo | Logs que se escriben           |
+|--------------|--------------|-------------------------------|
+| local        | debug        | debug, info, warn, error       |
+| develop      | debug        | debug, info, warn, error       |
+| testing/uat  | info         | info, warn, error              |
+| production   | warn         | warn, error                    |
+
+Puedes forzar el nivel usando la variable de entorno `LOG_LEVEL` (`error`, `warn`, `info`, `debug`). Si no se define, se toma el valor según el entorno (`NODE_ENV`).
+
+Ejemplo:
+```bash
+NODE_ENV=production LOG_LEVEL=info node app.js
+```
+
 
 ## Uso básico
 
 ```javascript
-const { logger } = require('@smdv/logger');
+const { Logger } = require('@smdv/logger');
+const { LogLevel, Environment, OutputFormat, SupportedLang, ENV_KEYS, DEFAULTS } = require('@smdv/logger/dist/constants');
 
-// Logs básicos
-logger.info('Servicio iniciado correctamente');
-logger.warn('Advertencia de memoria');
-logger.error('Error en base de datos', new Error('DB Down'));
-logger.debug('Payload recibido', { payload: { id: 123 } });
 
-// Con metadata adicional
-logger.info('Usuario autenticado', { 
-  userId: 12345, 
-  email: 'user@example.com',
-  timestamp: new Date().toISOString()
+
+// Inicialización del logger con configuración personalizada
+const logger = new Logger({
+  level: LogLevel.INFO,           // Nivel de log (usa LogLevel del constants)
+  lang: SupportedLang.ES,         // Idioma ('es' o 'en'), por defecto SupportedLang.EN
+  service: 'app1',                // Nombre del servicio
+  environment: Environment.DEVELOP, // Entorno (usa Environment del constants)
+  outputFormat: OutputFormat.JSON   // Formato de salida (usa OutputFormat del constants)
+// Todas las constantes y enums están centralizadas en constants.ts y deben ser reutilizadas en la integración. Evita valores hardcodeados.
 });
 
-// Error con stack trace
-try {
-  throw new Error('Algo salió mal');
-} catch (error) {
-  logger.error('Error capturado', error, { 
-    context: 'procesamiento-datos',
-    userId: 123 
-  });
-}
+// Ejemplo de logs internacionalizados y personalizados
+// Todos los métodos de log traducen automáticamente el mensaje si es una clave i18n
+logger.info('SERVICE_STARTED'); // → Traducido según idioma configurado
+logger.warn('MEMORY_WARNING'); // → Traducido
+logger.error('DB_ERROR'); // → Traducido
+logger.debug('CUSTOM_MESSAGE', { param: 'valor' }); // → Traducido si existe clave
+
+// También puedes enviar mensajes libres, que se mostrarán tal cual:
+logger.info('Mensaje libre en español');
+logger.warn('Mensaje libre personalizado');
 ```
 
 

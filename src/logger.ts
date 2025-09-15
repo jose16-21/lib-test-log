@@ -1,22 +1,55 @@
 import winston from 'winston';
-import { LogLevel, LoggerConfig, LogEntry, HttpStatusCode, ApplicationErrorCode, ErrorContext } from './types';
+import { LogLevel, Environment, OutputFormat, SupportedLang, ENV_KEYS, DEFAULTS } from './constants';
+import { LoggerConfig, LogEntry, HttpStatusCode, ApplicationErrorCode, ErrorContext } from './types';
 import { XmlProcessor } from './xml';
+import { translate } from './i18n';
 
 export class Logger {
   private winstonLogger: winston.Logger;
-  private config: LoggerConfig;
+  private config: LoggerConfig & {
+    environment: string;
+    outputFormat: 'json' | 'xml';
+    lang: SupportedLang;
+  };
   private xmlProcessor: XmlProcessor;
 
-  constructor(config?: Partial<LoggerConfig>, transports?: winston.transport[]) {
+  constructor(config?: Partial<LoggerConfig> & {
+    lang?: SupportedLang;
+    environment?: string;
+    outputFormat?: 'json' | 'xml';
+  }, transports?: winston.transport[]) {
+    const envEnvironment = process.env[ENV_KEYS.NODE_ENV] || DEFAULTS.NODE_ENV;
+    const envLang = process.env[ENV_KEYS.LOG_LANG] as SupportedLang | undefined || DEFAULTS.LOG_LANG;
+    const envOutputFormat = (process.env[ENV_KEYS.LOG_FORMAT] as OutputFormat) || DEFAULTS.LOG_FORMAT;
     this.config = {
       level: this.getLogLevel(),
       service: this.getServiceName(),
       isDevelopment: this.isDevelopment(),
+      environment: config?.environment || envEnvironment,
+      lang: config?.lang || envLang,
+      outputFormat: config?.outputFormat || envOutputFormat,
       ...config
     };
-
     this.winstonLogger = this.createWinstonLogger(transports);
     this.xmlProcessor = new XmlProcessor();
+  }
+
+  // Log con soporte i18n
+  logI18n(level: LogLevel, key: string, params?: Record<string, any>, meta?: any): void {
+    const message = translate(this.config.lang, key, params);
+    switch (level) {
+      case LogLevel.ERROR:
+        this.error(message, undefined, meta);
+        break;
+      case LogLevel.WARN:
+        this.warn(message, meta);
+        break;
+      case LogLevel.DEBUG:
+        this.debug(message, meta);
+        break;
+      default:
+        this.info(message, meta);
+    }
   }
 
   /**
@@ -30,49 +63,55 @@ export class Logger {
       valid = this.xmlProcessor.validate(xmlString);
       if (valid) {
         parsed = this.xmlProcessor.parse(xmlString);
+        let output;
+        if (this.config.outputFormat === 'xml') {
+          output = this.xmlProcessor.build(parsed);
+        } else {
+          output = parsed;
+        }
         switch (level) {
           case LogLevel.ERROR:
-            this.error("XML procesado correctamente", undefined, { xml: parsed, ...meta });
+            this.error("XML procesado correctamente", undefined, { xml: output, ...meta });
             break;
           case LogLevel.WARN:
-            this.warn("XML procesado correctamente", { xml: parsed, ...meta });
+            this.warn("XML procesado correctamente", { xml: output, ...meta });
             break;
           case LogLevel.DEBUG:
-            this.debug("XML procesado correctamente", { xml: parsed, ...meta });
+            this.debug("XML procesado correctamente", { xml: output, ...meta });
             break;
           default:
-            this.info("XML procesado correctamente", { xml: parsed, ...meta });
+            this.info("XML procesado correctamente", { xml: output, ...meta });
         }
       } else {
         this.error("XML inválido", undefined, { xml: xmlString, ...meta });
       }
     } catch (err) {
-      this.error("Error procesando XML", err, { xml: xmlString, ...meta });
+  this.error("Error procesando XML", undefined, { error: err, xml: xmlString, ...meta });
     }
   }
 
   private getLogLevel(): LogLevel {
-    const envLevel = process.env.LOG_LEVEL?.toLowerCase();
+    const envLevel = process.env[ENV_KEYS.LOG_LEVEL]?.toLowerCase();
     switch (envLevel) {
-      case 'error':
+      case LogLevel.ERROR:
         return LogLevel.ERROR;
-      case 'warn':
+      case LogLevel.WARN:
         return LogLevel.WARN;
-      case 'info':
+      case LogLevel.INFO:
         return LogLevel.INFO;
-      case 'debug':
+      case LogLevel.DEBUG:
         return LogLevel.DEBUG;
       default:
-        return LogLevel.INFO;
+        return DEFAULTS.LOG_LEVEL;
     }
   }
 
   private getServiceName(): string {
-    return process.env.SERVICE_NAME || 'unknown-service';
+    return process.env[ENV_KEYS.SERVICE_NAME] || DEFAULTS.SERVICE_NAME;
   }
 
   private isDevelopment(): boolean {
-    return process.env.NODE_ENV !== 'production';
+    return process.env[ENV_KEYS.NODE_ENV] !== Environment.PRODUCTION;
   }
 
   private createWinstonLogger(customTransports?: winston.transport[]): winston.Logger {
@@ -146,74 +185,79 @@ export class Logger {
     return entry;
   }
 
-  error(message: string, error?: Error | any, meta?: any): void {
-    if (error instanceof Error) {
-      this.winstonLogger.error(message, { stack: error.stack, ...meta });
-    } else if (error && typeof error === 'object') {
-      this.winstonLogger.error(message, error);
-    } else {
-      this.winstonLogger.error(message, meta);
+  error(message: string, params?: Record<string, any>, meta?: any): void {
+    const translated = this.isI18nKey(message) ? translate(this.config.lang, message, params) : message;
+    this.winstonLogger.error(translated, meta);
+  }
+
+  warn(message: string, params?: Record<string, any>, meta?: any): void {
+    const translated = this.isI18nKey(message) ? translate(this.config.lang, message, params) : message;
+    this.winstonLogger.warn(translated, meta);
+  }
+
+  info(message: string, params?: Record<string, any>, meta?: any): void {
+    const translated = this.isI18nKey(message) ? translate(this.config.lang, message, params) : message;
+    this.winstonLogger.info(translated, meta);
+  }
+
+  private isI18nKey(key: string): boolean {
+    // Verifica si la clave existe en el diccionario de mensajes
+    try {
+      const messages = require(`./i18n/${this.config.lang}.json`);
+      return Object.prototype.hasOwnProperty.call(messages, key);
+    } catch {
+      return false;
     }
   }
 
-  warn(message: string, meta?: any): void {
-    this.winstonLogger.warn(message, meta);
-  }
-
-  info(message: string, meta?: any): void {
-    this.winstonLogger.info(message, meta);
-  }
-
-  debug(message: string, meta?: any): void {
-    this.winstonLogger.debug(message, meta);
+  debug(message: string, params?: Record<string, any>, meta?: any): void {
+    const translated = this.isI18nKey(message) ? translate(this.config.lang, message, params) : message;
+    this.winstonLogger.debug(translated, meta);
   }
 
   // Métodos específicos para códigos de error HTTP
   logHttpError(message: string, httpStatus: HttpStatusCode, meta?: any): void {
-    const logData = { httpStatus, statusCode: httpStatus, ...meta };
-
+    const logMeta = { httpStatus, statusCode: httpStatus, ...meta };
     if (httpStatus >= 500) {
-      this.error(message, logData);
+      this.error(message, undefined, logMeta);
     } else if (httpStatus >= 400) {
-      this.warn(message, logData);
+      this.warn(message, undefined, logMeta);
     } else {
-      this.info(message, logData);
+      this.info(message, undefined, logMeta);
     }
   }
 
   // Método específico para errores de aplicación
   logApplicationError(message: string, errorCode: ApplicationErrorCode, context?: ErrorContext): void {
-    const logData = {
+    const logMeta = {
       errorCode,
       ...context
     };
-
     // Determinar nivel basado en el tipo de error
     if (errorCode.startsWith('SYS_') || errorCode.startsWith('DB_') || errorCode.startsWith('EXT_')) {
-      this.error(message, logData);
+      this.error(message, undefined, logMeta);
     } else if (errorCode.startsWith('AUTH_') || errorCode.startsWith('BIZ_')) {
-      this.warn(message, logData);
+      this.warn(message, undefined, logMeta);
     } else {
-      this.info(message, logData);
+      this.info(message, undefined, logMeta);
     }
   }
 
   // Método para logging de requests con códigos de estado
   logRequest(message: string, method: string, url: string, statusCode: number, duration?: number, meta?: any): void {
-    const logData = {
+    const logMeta = {
       method,
       url,
       statusCode,
       duration,
       ...meta
     };
-
     if (statusCode >= 500) {
-      this.error(message, logData);
+      this.error(message, undefined, logMeta);
     } else if (statusCode >= 400) {
-      this.warn(message, logData);
+      this.warn(message, undefined, logMeta);
     } else {
-      this.info(message, logData);
+      this.info(message, undefined, logMeta);
     }
   }
 
