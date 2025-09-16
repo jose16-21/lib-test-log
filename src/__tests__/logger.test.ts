@@ -1,12 +1,12 @@
+import { describe, it, expect, beforeEach } from '@jest/globals';
 // Helper para limpiar códigos de color ANSI
 function stripAnsi(str: string): string {
   return str.replace(/\x1B\[[0-9;]*m/g, '');
 }
 
 import { Logger } from '../logger';
-import { LogLevel } from '../types';
+import { LogLevel, SupportedLang } from '../types';
 import { HttpStatusCode, ApplicationErrorCode } from '../types';
-import { SupportedLang } from '../constants';
 
 import Transport from 'winston-transport';
 
@@ -20,8 +20,14 @@ class TestTransport extends Transport {
   }
 }
 
-const testTransport = new TestTransport();
-const logger = new Logger({ level: LogLevel.DEBUG, lang: SupportedLang.ES }, [testTransport]);
+describe('Logger', () => {
+  const testTransport = new TestTransport();
+  const logger = new Logger({ level: LogLevel.DEBUG, lang: SupportedLang.ES }, [testTransport]);
+
+  beforeEach(() => {
+    testTransport.logs = [];
+  });
+
   it('should translate i18n keys for info', async () => {
     logger.info('SERVICE_STARTED');
     await new Promise(resolve => setImmediate(resolve));
@@ -151,9 +157,10 @@ describe('Logger', () => {
   it('should log different levels to appropriate streams', async () => {
     logger.info('Info message');
     await new Promise(resolve => setImmediate(resolve));
-  expect(testTransport.logs.some(log => stripAnsi(log.level) === 'info' && stripAnsi(log.message) === 'Info message')).toBe(true);
-  logger.error('Error message');
-  await new Promise(resolve => setImmediate(resolve));
-  expect(testTransport.logs.some(log => stripAnsi(log.level) === 'error' && stripAnsi(log.message) === 'Error message')).toBe(true);
+    expect(testTransport.logs.some(log => stripAnsi(log.level) === 'info' && stripAnsi(log.message) === 'Info message')).toBe(true);
+    logger.error('Error message');
+    await new Promise(resolve => setImmediate(resolve));
+    expect(testTransport.logs.some(log => stripAnsi(log.level) === 'error' && stripAnsi(log.message) === 'Error message')).toBe(true);
   });
 });
+  });

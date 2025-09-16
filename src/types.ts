@@ -1,3 +1,19 @@
+export enum Environment {
+  LOCAL = 'local',
+  DEVELOP = 'develop',
+  TESTING = 'testing',
+  PRODUCTION = 'production'
+}
+
+export enum OutputFormat {
+  JSON = 'json',
+  XML = 'xml'
+}
+
+export enum SupportedLang {
+  EN = 'en',
+  ES = 'es'
+}
 export enum LogLevel {
   ERROR = 'error',
   WARN = 'warn',

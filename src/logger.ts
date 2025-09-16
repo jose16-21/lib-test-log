@@ -1,5 +1,6 @@
 import winston from 'winston';
-import { LogLevel, Environment, OutputFormat, SupportedLang, ENV_KEYS, DEFAULTS } from './constants';
+import { ENV_KEYS, DEFAULTS } from './constants';
+import { LogLevel, Environment, OutputFormat, SupportedLang } from './types';
 import { LoggerConfig, LogEntry, HttpStatusCode, ApplicationErrorCode, ErrorContext } from './types';
 import { XmlProcessor } from './xml';
 import { translate } from './i18n';
@@ -8,7 +9,7 @@ export class Logger {
   private winstonLogger: winston.Logger;
   private config: LoggerConfig & {
     environment: string;
-    outputFormat: 'json' | 'xml';
+    outputFormat: OutputFormat;
     lang: SupportedLang;
   };
   private xmlProcessor: XmlProcessor;
@@ -16,11 +17,11 @@ export class Logger {
   constructor(config?: Partial<LoggerConfig> & {
     lang?: SupportedLang;
     environment?: string;
-    outputFormat?: 'json' | 'xml';
+    outputFormat?: OutputFormat;
   }, transports?: winston.transport[]) {
     const envEnvironment = process.env[ENV_KEYS.NODE_ENV] || DEFAULTS.NODE_ENV;
-    const envLang = process.env[ENV_KEYS.LOG_LANG] as SupportedLang | undefined || DEFAULTS.LOG_LANG;
-    const envOutputFormat = (process.env[ENV_KEYS.LOG_FORMAT] as OutputFormat) || DEFAULTS.LOG_FORMAT;
+    const envLang = (process.env[ENV_KEYS.LOG_LANG] as SupportedLang | undefined) || SupportedLang[DEFAULTS.LOG_LANG.toUpperCase() as keyof typeof SupportedLang];
+    const envOutputFormat = (process.env[ENV_KEYS.LOG_FORMAT] as OutputFormat) || OutputFormat[DEFAULTS.LOG_FORMAT.toUpperCase() as keyof typeof OutputFormat];
     this.config = {
       level: this.getLogLevel(),
       service: this.getServiceName(),
@@ -64,7 +65,7 @@ export class Logger {
       if (valid) {
         parsed = this.xmlProcessor.parse(xmlString);
         let output;
-        if (this.config.outputFormat === 'xml') {
+        if (this.config.outputFormat === OutputFormat.XML) {
           output = this.xmlProcessor.build(parsed);
         } else {
           output = parsed;
@@ -86,7 +87,7 @@ export class Logger {
         this.error("XML inválido", undefined, { xml: xmlString, ...meta });
       }
     } catch (err) {
-  this.error("Error procesando XML", undefined, { error: err, xml: xmlString, ...meta });
+      this.error("Error procesando XML", undefined, { error: err, xml: xmlString, ...meta });
     }
   }
 
@@ -102,7 +103,7 @@ export class Logger {
       case LogLevel.DEBUG:
         return LogLevel.DEBUG;
       default:
-        return DEFAULTS.LOG_LEVEL;
+        return LogLevel[DEFAULTS.LOG_LEVEL.toUpperCase() as keyof typeof LogLevel];
     }
   }
 
@@ -115,34 +116,51 @@ export class Logger {
   }
 
   private createWinstonLogger(customTransports?: winston.transport[]): winston.Logger {
+    const chalk = require('chalk');
     const formats = [
       winston.format.timestamp({
         format: 'YYYY-MM-DD HH:mm:ss'
       }),
-      winston.format.errors({ stack: true }),
-      winston.format.json()
+      winston.format.errors({ stack: true })
     ];
 
-    // En desarrollo, agregar colores
-    if (this.config.isDevelopment) {
-      formats.unshift(winston.format.colorize({ all: true }));
-      formats.push(
-        winston.format.printf((info) => {
-          const { timestamp, level, message, service, stack, ...meta } = info;
-          let logMessage = `${timestamp} [${service}] ${level}: ${message}`;
-
-          if (Object.keys(meta).length > 0) {
-            logMessage += `\n${JSON.stringify(meta, null, 2)}`;
-          }
-
-          if (stack) {
-            logMessage += `\n${stack}`;
-          }
-
-          return logMessage;
-        })
-      );
-    }
+    // Formato personalizado con colores y prefijos
+    formats.push(
+      winston.format.printf((info) => {
+        const { timestamp, level, message, service, environment, stack, ...meta } = info;
+        let levelPrefix = '';
+        let colorFn = (txt: string) => txt;
+        switch (level) {
+          case 'error':
+            levelPrefix = '[ERROR]';
+            colorFn = chalk.red;
+            break;
+          case 'warn':
+            levelPrefix = '[WARN]';
+            colorFn = chalk.yellow;
+            break;
+          case 'info':
+            levelPrefix = '[INFO]';
+            colorFn = chalk.green;
+            break;
+          case 'debug':
+            levelPrefix = '[DEBUG]';
+            colorFn = chalk.cyan;
+            break;
+          default:
+            levelPrefix = `[${level.toUpperCase()}]`;
+        }
+  const envStr = typeof environment === 'string' ? environment : String(environment || process.env[ENV_KEYS.NODE_ENV] || DEFAULTS.NODE_ENV);
+  let logMessage = `${colorFn(String(levelPrefix))} [${envStr}] ${timestamp} [${service}]: ${colorFn(String(message))}`;
+        if (Object.keys(meta).length > 0) {
+          logMessage += `\n${chalk.gray(JSON.stringify(meta, null, 2))}`;
+        }
+        if (stack) {
+          logMessage += `\n${chalk.magenta(stack)}`;
+        }
+        return logMessage;
+      })
+    );
 
     let transports: winston.transport[] = [];
     if (customTransports && customTransports.length > 0) {
