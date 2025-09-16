@@ -204,18 +204,21 @@ export class Logger {
   }
 
   error(message: string, params?: Record<string, any>, meta?: any): void {
-    const translated = this.isI18nKey(message) ? translate(this.config.lang, message, params) : message;
-    this.winstonLogger.error(translated, meta);
+  const translated = this.isI18nKey(message) ? translate(this.config.lang, message, params) : message;
+  const mergedMeta = { ...(params || {}), ...(meta || {}) };
+  this.winstonLogger.error(translated, mergedMeta);
   }
 
   warn(message: string, params?: Record<string, any>, meta?: any): void {
-    const translated = this.isI18nKey(message) ? translate(this.config.lang, message, params) : message;
-    this.winstonLogger.warn(translated, meta);
+  const translated = this.isI18nKey(message) ? translate(this.config.lang, message, params) : message;
+  const mergedMeta = { ...(params || {}), ...(meta || {}) };
+  this.winstonLogger.warn(translated, mergedMeta);
   }
 
   info(message: string, params?: Record<string, any>, meta?: any): void {
-    const translated = this.isI18nKey(message) ? translate(this.config.lang, message, params) : message;
-    this.winstonLogger.info(translated, meta);
+  const translated = this.isI18nKey(message) ? translate(this.config.lang, message, params) : message;
+  const mergedMeta = { ...(params || {}), ...(meta || {}) };
+  this.winstonLogger.info(translated, mergedMeta);
   }
 
   private isI18nKey(key: string): boolean {
@@ -229,8 +232,9 @@ export class Logger {
   }
 
   debug(message: string, params?: Record<string, any>, meta?: any): void {
-    const translated = this.isI18nKey(message) ? translate(this.config.lang, message, params) : message;
-    this.winstonLogger.debug(translated, meta);
+  const translated = this.isI18nKey(message) ? translate(this.config.lang, message, params) : message;
+  const mergedMeta = { ...(params || {}), ...(meta || {}) };
+  this.winstonLogger.debug(translated, mergedMeta);
   }
 
   // Métodos específicos para códigos de error HTTP
