@@ -1,5 +1,6 @@
 import winston from 'winston';
-import { LogLevel, Environment, OutputFormat, SupportedLang, ENV_KEYS, DEFAULTS } from './constants';
+import { ENV_KEYS, DEFAULTS } from './constants';
+import { LogLevel, Environment, OutputFormat, SupportedLang } from './types';
 import { LoggerConfig, LogEntry, HttpStatusCode, ApplicationErrorCode, ErrorContext } from './types';
 import { XmlProcessor } from './xml';
 import { translate } from './i18n';
@@ -8,7 +9,7 @@ export class Logger {
   private winstonLogger: winston.Logger;
   private config: LoggerConfig & {
     environment: string;
-    outputFormat: 'json' | 'xml';
+    outputFormat: OutputFormat;
     lang: SupportedLang;
   };
   private xmlProcessor: XmlProcessor;
@@ -16,11 +17,11 @@ export class Logger {
   constructor(config?: Partial<LoggerConfig> & {
     lang?: SupportedLang;
     environment?: string;
-    outputFormat?: 'json' | 'xml';
+    outputFormat?: OutputFormat;
   }, transports?: winston.transport[]) {
     const envEnvironment = process.env[ENV_KEYS.NODE_ENV] || DEFAULTS.NODE_ENV;
-    const envLang = process.env[ENV_KEYS.LOG_LANG] as SupportedLang | undefined || DEFAULTS.LOG_LANG;
-    const envOutputFormat = (process.env[ENV_KEYS.LOG_FORMAT] as OutputFormat) || DEFAULTS.LOG_FORMAT;
+    const envLang = (process.env[ENV_KEYS.LOG_LANG] as SupportedLang | undefined) || SupportedLang[DEFAULTS.LOG_LANG.toUpperCase() as keyof typeof SupportedLang];
+    const envOutputFormat = (process.env[ENV_KEYS.LOG_FORMAT] as OutputFormat) || OutputFormat[DEFAULTS.LOG_FORMAT.toUpperCase() as keyof typeof OutputFormat];
     this.config = {
       level: this.getLogLevel(),
       service: this.getServiceName(),
@@ -64,7 +65,7 @@ export class Logger {
       if (valid) {
         parsed = this.xmlProcessor.parse(xmlString);
         let output;
-        if (this.config.outputFormat === 'xml') {
+        if (this.config.outputFormat === OutputFormat.XML) {
           output = this.xmlProcessor.build(parsed);
         } else {
           output = parsed;
@@ -86,7 +87,7 @@ export class Logger {
         this.error("XML inválido", undefined, { xml: xmlString, ...meta });
       }
     } catch (err) {
-  this.error("Error procesando XML", undefined, { error: err, xml: xmlString, ...meta });
+      this.error("Error procesando XML", undefined, { error: err, xml: xmlString, ...meta });
     }
   }
 
@@ -102,7 +103,7 @@ export class Logger {
       case LogLevel.DEBUG:
         return LogLevel.DEBUG;
       default:
-        return DEFAULTS.LOG_LEVEL;
+        return LogLevel[DEFAULTS.LOG_LEVEL.toUpperCase() as keyof typeof LogLevel];
     }
   }
 
