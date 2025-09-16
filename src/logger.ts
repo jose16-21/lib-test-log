@@ -116,34 +116,51 @@ export class Logger {
   }
 
   private createWinstonLogger(customTransports?: winston.transport[]): winston.Logger {
+    const chalk = require('chalk');
     const formats = [
       winston.format.timestamp({
         format: 'YYYY-MM-DD HH:mm:ss'
       }),
-      winston.format.errors({ stack: true }),
-      winston.format.json()
+      winston.format.errors({ stack: true })
     ];
 
-    // En desarrollo, agregar colores
-    if (this.config.isDevelopment) {
-      formats.unshift(winston.format.colorize({ all: true }));
-      formats.push(
-        winston.format.printf((info) => {
-          const { timestamp, level, message, service, stack, ...meta } = info;
-          let logMessage = `${timestamp} [${service}] ${level}: ${message}`;
-
-          if (Object.keys(meta).length > 0) {
-            logMessage += `\n${JSON.stringify(meta, null, 2)}`;
-          }
-
-          if (stack) {
-            logMessage += `\n${stack}`;
-          }
-
-          return logMessage;
-        })
-      );
-    }
+    // Formato personalizado con colores y prefijos
+    formats.push(
+      winston.format.printf((info) => {
+        const { timestamp, level, message, service, environment, stack, ...meta } = info;
+        let levelPrefix = '';
+        let colorFn = (txt: string) => txt;
+        switch (level) {
+          case 'error':
+            levelPrefix = '[ERROR]';
+            colorFn = chalk.red;
+            break;
+          case 'warn':
+            levelPrefix = '[WARN]';
+            colorFn = chalk.yellow;
+            break;
+          case 'info':
+            levelPrefix = '[INFO]';
+            colorFn = chalk.green;
+            break;
+          case 'debug':
+            levelPrefix = '[DEBUG]';
+            colorFn = chalk.cyan;
+            break;
+          default:
+            levelPrefix = `[${level.toUpperCase()}]`;
+        }
+  const envStr = typeof environment === 'string' ? environment : String(environment || process.env[ENV_KEYS.NODE_ENV] || DEFAULTS.NODE_ENV);
+  let logMessage = `${colorFn(String(levelPrefix))} [${envStr}] ${timestamp} [${service}]: ${colorFn(String(message))}`;
+        if (Object.keys(meta).length > 0) {
+          logMessage += `\n${chalk.gray(JSON.stringify(meta, null, 2))}`;
+        }
+        if (stack) {
+          logMessage += `\n${chalk.magenta(stack)}`;
+        }
+        return logMessage;
+      })
+    );
 
     let transports: winston.transport[] = [];
     if (customTransports && customTransports.length > 0) {
