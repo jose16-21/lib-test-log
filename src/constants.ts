@@ -1,28 +1,6 @@
 // Centralización de constantes y enums para toda la librería
 
-export enum LogLevel {
-  ERROR = 'error',
-  WARN = 'warn',
-  INFO = 'info',
-  DEBUG = 'debug'
-}
-
-export enum Environment {
-  LOCAL = 'local',
-  DEVELOP = 'develop',
-  TESTING = 'testing',
-  PRODUCTION = 'production'
-}
-
-export enum OutputFormat {
-  JSON = 'json',
-  XML = 'xml'
-}
-
-export enum SupportedLang {
-  EN = 'en',
-  ES = 'es'
-}
+// Los enums globales se movieron a types.ts
 
 export const ENV_KEYS = {
   LOG_LEVEL: 'LOG_LEVEL',
@@ -33,11 +11,11 @@ export const ENV_KEYS = {
 };
 
 export const DEFAULTS = {
-  LOG_LEVEL: LogLevel.INFO,
+  LOG_LEVEL: 'info',
   SERVICE_NAME: 'unknown-service',
-  NODE_ENV: Environment.DEVELOP,
-  LOG_LANG: SupportedLang.EN,
-  LOG_FORMAT: OutputFormat.JSON
+  NODE_ENV: 'develop',
+  LOG_LANG: 'en',
+  LOG_FORMAT: 'json'
 };
 
 // Reexportar los códigos de error y status si se usan en toda la librería
