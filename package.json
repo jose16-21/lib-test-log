@@ -1,5 +1,5 @@
 {
-  "name": "logging-microservices",
+  "name": "@smdv/logger",
   "version": "1.0.1",
   "description": "Librería de logging para microservicios Node.js con soporte para múltiples niveles, formatos JSON y middleware Express",
   "main": "dist/index.js",
@@ -25,7 +25,7 @@
     "json",
     "typescript"
   ],
-  "author": "Tigo Sport",
+  "author": "Juan Jose Hernandez <hola@smartdevs.com.gt>",
   "license": "MIT",
   "dependencies": {
     "fast-xml-parser": "^5.2.5",
