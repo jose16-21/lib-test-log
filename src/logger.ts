@@ -116,7 +116,6 @@ export class Logger {
   }
 
   private createWinstonLogger(customTransports?: winston.transport[]): winston.Logger {
-    const chalk = require('chalk');
     const formats = [
       winston.format.timestamp({
         format: 'YYYY-MM-DD HH:mm:ss'
@@ -130,33 +129,42 @@ export class Logger {
         const { timestamp, level, message, service, environment, stack, ...meta } = info;
         let levelPrefix = '';
         let colorFn = (txt: string) => txt;
-        switch (level) {
-          case 'error':
-            levelPrefix = '[ERROR]';
-            colorFn = chalk.red;
-            break;
-          case 'warn':
-            levelPrefix = '[WARN]';
-            colorFn = chalk.yellow;
-            break;
-          case 'info':
-            levelPrefix = '[INFO]';
-            colorFn = chalk.green;
-            break;
-          case 'debug':
-            levelPrefix = '[DEBUG]';
-            colorFn = chalk.cyan;
-            break;
-          default:
-            levelPrefix = `[${level.toUpperCase()}]`;
+        
+        // Usar colores solo en desarrollo, sin chalk para evitar problemas ESM
+        if (this.config.isDevelopment) {
+          switch (level) {
+            case 'error':
+              levelPrefix = '[ERROR]';
+              colorFn = (txt: string) => `\x1b[31m${txt}\x1b[0m`; // rojo
+              break;
+            case 'warn':
+              levelPrefix = '[WARN]';
+              colorFn = (txt: string) => `\x1b[33m${txt}\x1b[0m`; // amarillo
+              break;
+            case 'info':
+              levelPrefix = '[INFO]';
+              colorFn = (txt: string) => `\x1b[32m${txt}\x1b[0m`; // verde
+              break;
+            case 'debug':
+              levelPrefix = '[DEBUG]';
+              colorFn = (txt: string) => `\x1b[36m${txt}\x1b[0m`; // cyan
+              break;
+            default:
+              levelPrefix = `[${level.toUpperCase()}]`;
+          }
+        } else {
+          levelPrefix = `[${level.toUpperCase()}]`;
         }
-  const envStr = typeof environment === 'string' ? environment : String(environment || process.env[ENV_KEYS.NODE_ENV] || DEFAULTS.NODE_ENV);
-  let logMessage = `${colorFn(String(levelPrefix))} [${envStr}] ${timestamp} [${service}]: ${colorFn(String(message))}`;
+        
+        const envStr = typeof environment === 'string' ? environment : String(environment || process.env[ENV_KEYS.NODE_ENV] || DEFAULTS.NODE_ENV);
+        let logMessage = `${colorFn(String(levelPrefix))} [${envStr}] ${timestamp} [${service}]: ${colorFn(String(message))}`;
+        
         if (Object.keys(meta).length > 0) {
-          logMessage += `\n${chalk.gray(JSON.stringify(meta, null, 2))}`;
+          const metaStr = JSON.stringify(meta, null, 2);
+          logMessage += this.config.isDevelopment ? `\n\x1b[90m${metaStr}\x1b[0m` : `\n${metaStr}`; // gris en desarrollo
         }
         if (stack) {
-          logMessage += `\n${chalk.magenta(stack)}`;
+          logMessage += this.config.isDevelopment ? `\n\x1b[35m${stack}\x1b[0m` : `\n${stack}`; // magenta en desarrollo
         }
         return logMessage;
       })
